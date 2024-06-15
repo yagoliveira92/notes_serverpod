@@ -13,6 +13,7 @@ import 'package:serverpod_client/serverpod_client.dart' as _i1;
 import 'example.dart' as _i2;
 import 'note.dart' as _i3;
 import 'package:notes_client/src/protocol/note.dart' as _i4;
+import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i5;
 export 'example.dart';
 export 'note.dart';
 export 'client.dart';
@@ -46,11 +47,19 @@ class Protocol extends _i1.SerializationManager {
       return (data as List).map((e) => deserialize<_i4.Note>(e)).toList()
           as dynamic;
     }
+    try {
+      return _i5.Protocol().deserialize<T>(data, t);
+    } on _i1.DeserializationTypeNotFoundException catch (_) {}
     return super.deserialize<T>(data, t);
   }
 
   @override
   String? getClassNameForObject(Object data) {
+    String? className;
+    className = _i5.Protocol().getClassNameForObject(data);
+    if (className != null) {
+      return 'serverpod_auth.$className';
+    }
     if (data is _i2.Example) {
       return 'Example';
     }
@@ -62,6 +71,10 @@ class Protocol extends _i1.SerializationManager {
 
   @override
   dynamic deserializeByClassName(Map<String, dynamic> data) {
+    if (data['className'].startsWith('serverpod_auth.')) {
+      data['className'] = data['className'].substring(15);
+      return _i5.Protocol().deserializeByClassName(data);
+    }
     if (data['className'] == 'Example') {
       return deserialize<_i2.Example>(data['data']);
     }

@@ -11,7 +11,8 @@
 import 'package:serverpod_client/serverpod_client.dart' as _i1;
 import 'dart:async' as _i2;
 import 'package:notes_client/src/protocol/note.dart' as _i3;
-import 'protocol.dart' as _i4;
+import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i4;
+import 'protocol.dart' as _i5;
 
 /// {@category Endpoint}
 class EndpointExample extends _i1.EndpointRef {
@@ -60,6 +61,14 @@ class EndpointNotes extends _i1.EndpointRef {
       );
 }
 
+class _Modules {
+  _Modules(Client client) {
+    auth = _i4.Caller(client);
+  }
+
+  late final _i4.Caller auth;
+}
+
 class Client extends _i1.ServerpodClient {
   Client(
     String host, {
@@ -75,7 +84,7 @@ class Client extends _i1.ServerpodClient {
     Function(_i1.MethodCallContext)? onSucceededCall,
   }) : super(
           host,
-          _i4.Protocol(),
+          _i5.Protocol(),
           securityContext: securityContext,
           authenticationKeyManager: authenticationKeyManager,
           streamingConnectionTimeout: streamingConnectionTimeout,
@@ -85,11 +94,14 @@ class Client extends _i1.ServerpodClient {
         ) {
     example = EndpointExample(this);
     notes = EndpointNotes(this);
+    modules = _Modules(this);
   }
 
   late final EndpointExample example;
 
   late final EndpointNotes notes;
+
+  late final _Modules modules;
 
   @override
   Map<String, _i1.EndpointRef> get endpointRefLookup => {
@@ -98,5 +110,6 @@ class Client extends _i1.ServerpodClient {
       };
 
   @override
-  Map<String, _i1.ModuleEndpointCaller> get moduleLookup => {};
+  Map<String, _i1.ModuleEndpointCaller> get moduleLookup =>
+      {'auth': modules.auth};
 }

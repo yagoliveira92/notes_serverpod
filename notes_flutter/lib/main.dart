@@ -1,7 +1,10 @@
 import 'package:notes_client/notes_client.dart';
 import 'package:flutter/material.dart';
-import 'package:notes_flutter/widgets/loading_screen.dart';
-import 'package:notes_flutter/widgets/note_dialog.dart';
+import 'package:notes_flutter/src/serverpod_client.dart';
+import 'package:notes_flutter/src/widgets/account_page.dart';
+import 'package:notes_flutter/src/widgets/loading_screen.dart';
+import 'package:notes_flutter/src/widgets/note_dialog.dart';
+import 'package:notes_flutter/src/widgets/sign_in_page.dart';
 import 'package:serverpod_flutter/serverpod_flutter.dart';
 
 // Sets up a singleton client object that can be used to talk to the server from
@@ -12,7 +15,12 @@ import 'package:serverpod_flutter/serverpod_flutter.dart';
 var client = Client('http://$localhost:8080/')
   ..connectivityMonitor = FlutterConnectivityMonitor();
 
-void main() {
+Future<void> main() async {
+  // Need to call this as SessionManager is using Flutter bindings before runApp
+  // is called.
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await initializeServerpodClient();
   runApp(const MyApp());
 }
 
@@ -26,7 +34,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Serverpod Example'),
+      home: const MyHomePage(title: 'Notes Example'),
     );
   }
 }
@@ -47,7 +55,9 @@ class MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    _loadNotes();
+    sessionManager.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
@@ -56,61 +66,68 @@ class MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: _notes == null
-          ? LoadingScreen(
-              exception: _connectionException,
-              onTryAgain: _loadNotes,
-            )
-          : ListView.builder(
-              itemCount: _notes!.length,
-              itemBuilder: ((context, index) {
-                return ListTile(
-                  title: Text(_notes![index].text),
-                  onLongPress: () {
-                    showNoteDialog(
-                      context: context,
-                      text: _notes![index].text,
-                      onSaved: (text) {
-                        _notes![index].text = text;
-                        _editNote(_notes![index]);
-                      },
-                    );
-
-                  },
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete),
-                    onPressed: () {
-                      var note = _notes![index];
-
-                      setState(() {
-                        _notes!.remove(note);
-                      });
-
-                      _deleteNote(note);
-                    },
-                  ),
-                );
-              }),
-            ),
-      floatingActionButton: _notes == null
-          ? null
-          : FloatingActionButton(
-              onPressed: () {
-                showNoteDialog(
-                  context: context,
-                  onSaved: (text) {
-                    var note = Note(
-                      text: text,
-                    );
-                    _notes!.add(note);
-
-                    _createNote(note);
-                  },
-                );
-              },
-              child: const Icon(Icons.add),
-            ),
+      body:
+          sessionManager.isSignedIn ? const AccountPage() : const SignInPage(),
     );
+    // return Scaffold(
+    //   appBar: AppBar(
+    //     title: Text(widget.title),
+    //   ),
+    //   body: _notes == null
+    //       ? LoadingScreen(
+    //           exception: _connectionException,
+    //           onTryAgain: _loadNotes,
+    //         )
+    //       : ListView.builder(
+    //           itemCount: _notes!.length,
+    //           itemBuilder: ((context, index) {
+    //             return ListTile(
+    //               title: Text(_notes![index].text),
+    //               onLongPress: () {
+    //                 showNoteDialog(
+    //                   context: context,
+    //                   text: _notes![index].text,
+    //                   onSaved: (text) {
+    //                     _notes![index].text = text;
+    //                     _editNote(_notes![index]);
+    //                   },
+    //                 );
+
+    //               },
+    //               trailing: IconButton(
+    //                 icon: const Icon(Icons.delete),
+    //                 onPressed: () {
+    //                   var note = _notes![index];
+
+    //                   setState(() {
+    //                     _notes!.remove(note);
+    //                   });
+
+    //                   _deleteNote(note);
+    //                 },
+    //               ),
+    //             );
+    //           }),
+    //         ),
+    //   floatingActionButton: _notes == null
+    //       ? null
+    //       : FloatingActionButton(
+    //           onPressed: () {
+    //             showNoteDialog(
+    //               context: context,
+    //               onSaved: (text) {
+    //                 var note = Note(
+    //                   text: text,
+    //                 );
+    //                 _notes!.add(note);
+
+    //                 _createNote(note);
+    //               },
+    //             );
+    //           },
+    //           child: const Icon(Icons.add),
+    //         ),
+    // );
   }
 
   void _connectionFailed(dynamic exception) {
